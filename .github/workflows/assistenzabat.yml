@@ -105,6 +105,13 @@ jobs:
           sed -i "s|VALUE \"FileDescription\", \"RustDesk Remote Desktop\"|VALUE \"FileDescription\", \"${APP_DESCRIPTION}\"|" $RC
           sed -i "s|VALUE \"CompanyName\", \"Purslane Tech Pte. Ltd.\"|VALUE \"CompanyName\", \"${COMPANY}\"|" $RC
           sed -i "s|std::wstring app_name = L\"RustDesk\";|std::wstring app_name = L\"${APP_NAME}\";|" flutter/windows/runner/main.cpp
+          # metadati del pacchetto autoestraente (exe distribuito ai clienti)
+          PC=libs/portable/Cargo.toml
+          sed -i "s|^description = \"RustDesk Remote Desktop\"|description = \"${APP_DESCRIPTION}\"|" $PC
+          sed -i "s|^ProductName = \"RustDesk\"|ProductName = \"${APP_NAME}\"|" $PC
+          sed -i "s|^FileDescription = \"RustDesk Remote Desktop\"|FileDescription = \"${APP_DESCRIPTION}\"|" $PC
+          sed -i "s|^OriginalFilename = \"rustdesk.exe\"|OriginalFilename = \"${APP_NAME}.exe\"|" $PC
+          sed -i "/^ProductName = /a CompanyName = \"${COMPANY}\"" $PC
           # icone
           O=branding/out
           cp $O/icon.ico res/icon.ico
@@ -124,6 +131,8 @@ jobs:
           grep -q "${RS_PUB_KEY}" $CFG
           grep -q "${APP_NAME}" $RC
           grep -q "L\"${APP_NAME}\"" flutter/windows/runner/main.cpp
+          grep -q "^ProductName = \"${APP_NAME}\"" $PC
+          grep -q "^OriginalFilename = \"${APP_NAME}.exe\"" $PC
           echo "Branding applicato:"; grep -n "APP_NAME: RwLock\|RENDEZVOUS_SERVERS:\|RS_PUB_KEY:" $CFG
 
       - name: Install LLVM and Clang
@@ -210,9 +219,11 @@ jobs:
         shell: bash
         run: |
           sed -i '/dpiAware/d' res/manifest.xml
+          # l'installer registra il servizio come "<APP_NAME>.exe": l'eseguibile deve chiamarsi cosi'
+          mv ./rustdesk/rustdesk.exe "./rustdesk/${APP_NAME}.exe"
           pushd ./libs/portable
           pip3 install -r requirements.txt
-          python3 ./generate.py -f ../../rustdesk/ -o . -e ../../rustdesk/rustdesk.exe
+          python3 ./generate.py -f ../../rustdesk/ -o . -e "../../rustdesk/${APP_NAME}.exe"
           popd
           mkdir -p ./out
           mv ./target/release/rustdesk-portable-packer.exe "./out/${APP_NAME}-${VERSION}-x64.exe"
